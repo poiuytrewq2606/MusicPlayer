@@ -36,7 +36,7 @@ interface PlayerState {
     playNext: () => Song | null;
     playPrevious: () => Song | null;
     addToRecentlyPlayed: (song: Song) => void;
-    loadPersistedState: () => void;
+    loadPersistedState: () => Promise<void>;
 }
 
 const MAX_RECENTLY_PLAYED = 20;
@@ -73,7 +73,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     toggleShuffle: () => {
         const { shuffleMode, queue, originalQueue, currentIndex, currentTrack } = get();
         if (!shuffleMode) {
-            // Enable shuffle: save original order, shuffle the rest
             const newOriginal = [...queue];
             const remaining = queue.filter((_, i) => i !== currentIndex);
             const shuffled = remaining.sort(() => Math.random() - 0.5);
@@ -85,7 +84,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
                 currentIndex: 0,
             });
         } else {
-            // Disable shuffle: restore original order
             const currentId = currentTrack?.id;
             const restoredIndex = originalQueue.findIndex(s => s.id === currentId);
             set({
@@ -119,7 +117,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     addToQueue: (song: Song) => {
         const { queue } = get();
-        // Avoid duplicates
         if (queue.some(s => s.id === song.id)) return;
         const newQueue = [...queue, song];
         set({ queue: newQueue });
@@ -176,7 +173,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         } else if (repeatMode === 'all') {
             nextIndex = 0;
         } else {
-            return null; // End of queue, no repeat
+            return null;
         }
 
         const nextTrack = queue[nextIndex];
@@ -190,7 +187,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         const { queue, currentIndex, position, repeatMode } = get();
         if (queue.length === 0) return null;
 
-        // If more than 3 seconds in, restart current track
         if (position > 3) {
             set({ position: 0 });
             return queue[currentIndex];
@@ -219,26 +215,30 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         setStorageItem(STORAGE_KEYS.RECENTLY_PLAYED, updated);
     },
 
-    loadPersistedState: () => {
-        const queue = getStorageItem<Song[]>(STORAGE_KEYS.QUEUE) || [];
-        const currentIndex = getStorageItem<number>(STORAGE_KEYS.QUEUE_INDEX) || 0;
-        const recentlyPlayed = getStorageItem<Song[]>(STORAGE_KEYS.RECENTLY_PLAYED) || [];
-        const shuffleMode = getStorageItem<boolean>(STORAGE_KEYS.SHUFFLE_MODE) || false;
-        const repeatMode = getStorageItem<RepeatMode>(STORAGE_KEYS.REPEAT_MODE) || 'off';
+    loadPersistedState: async () => {
+        try {
+            const queue = await getStorageItem<Song[]>(STORAGE_KEYS.QUEUE) || [];
+            const currentIndex = await getStorageItem<number>(STORAGE_KEYS.QUEUE_INDEX) || 0;
+            const recentlyPlayed = await getStorageItem<Song[]>(STORAGE_KEYS.RECENTLY_PLAYED) || [];
+            const shuffleMode = await getStorageItem<boolean>(STORAGE_KEYS.SHUFFLE_MODE) || false;
+            const repeatMode = await getStorageItem<RepeatMode>(STORAGE_KEYS.REPEAT_MODE) || 'off';
 
-        set({
-            queue,
-            originalQueue: queue,
-            currentIndex,
-            currentTrack: queue[currentIndex] || null,
-            recentlyPlayed,
-            shuffleMode,
-            repeatMode,
-        });
+            set({
+                queue,
+                originalQueue: queue,
+                currentIndex,
+                currentTrack: queue[currentIndex] || null,
+                recentlyPlayed,
+                shuffleMode,
+                repeatMode,
+            });
+        } catch {
+            // Silently fail — app runs fine without persisted state
+        }
     },
 }));
 
-// Helper to persist queue state
+// Helper to persist queue state (fire-and-forget)
 function persistQueue(state: PlayerState) {
     setStorageItem(STORAGE_KEYS.QUEUE, state.queue);
     setStorageItem(STORAGE_KEYS.QUEUE_INDEX, state.currentIndex);

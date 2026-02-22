@@ -1,7 +1,4 @@
-// react-native-mmkv provides MMKV as a class
-const { MMKV } = require('react-native-mmkv');
-
-export const storage = new MMKV();
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Storage keys
 export const STORAGE_KEYS = {
@@ -15,12 +12,12 @@ export const STORAGE_KEYS = {
 } as const;
 
 /**
- * Get a JSON value from MMKV storage
+ * Get a JSON value from AsyncStorage
  */
-export function getStorageItem<T>(key: string): T | null {
-    const value = storage.getString(key);
-    if (!value) return null;
+export async function getStorageItem<T>(key: string): Promise<T | null> {
     try {
+        const value = await AsyncStorage.getItem(key);
+        if (!value) return null;
         return JSON.parse(value) as T;
     } catch {
         return null;
@@ -28,15 +25,23 @@ export function getStorageItem<T>(key: string): T | null {
 }
 
 /**
- * Set a JSON value in MMKV storage
+ * Set a JSON value in AsyncStorage
  */
-export function setStorageItem<T>(key: string, value: T): void {
-    storage.set(key, JSON.stringify(value));
+export async function setStorageItem<T>(key: string, value: T): Promise<void> {
+    try {
+        await AsyncStorage.setItem(key, JSON.stringify(value));
+    } catch {
+        // Silently fail for non-critical persistence
+    }
 }
 
 /**
- * Remove an item from MMKV storage
+ * Remove an item from AsyncStorage
  */
-export function removeStorageItem(key: string): void {
-    storage.delete(key);
+export async function removeStorageItem(key: string): Promise<void> {
+    try {
+        await AsyncStorage.removeItem(key);
+    } catch {
+        // Silently fail
+    }
 }
