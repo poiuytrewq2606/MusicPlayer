@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { colors, spacing, borderRadius, typography, shadows } from '../theme';
 import { getThumbnailUrl, getArtistNames, decodeHtml } from '../utils/formatters';
-import TrackPlayer from 'react-native-track-player';
+import { togglePlayPause, skipToNext } from '../services/trackPlayerService';
 
 interface MiniPlayerProps {
     onPress: () => void;
@@ -26,26 +26,11 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({ onPress }) => {
     const progress = duration > 0 ? position / duration : 0;
 
     const handlePlayPause = async () => {
-        if (isPlaying) {
-            await TrackPlayer.pause();
-            usePlayerStore.getState().setIsPlaying(false);
-        } else {
-            await TrackPlayer.play();
-            usePlayerStore.getState().setIsPlaying(true);
-        }
+        await togglePlayPause();
     };
 
     const handleNext = async () => {
-        const store = usePlayerStore.getState();
-        const nextTrack = store.playNext();
-        if (nextTrack) {
-            try {
-                await TrackPlayer.skipToNext();
-                store.setIsPlaying(true);
-            } catch {
-                // If skip fails, just continue
-            }
-        }
+        await skipToNext();
     };
 
     return (

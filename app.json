@@ -28,6 +28,7 @@
         "android.permission.WAKE_LOCK"
       ]
     },
+    "plugins": [],
     "extra": {
       "eas": {
         "projectId": "16496415-b4f9-460d-83bb-5cbd3cf4e2f9"

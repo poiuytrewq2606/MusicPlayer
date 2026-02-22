@@ -2,14 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import TrackPlayer from 'react-native-track-player';
 import { AppNavigator } from './src/navigation/AppNavigator';
-import { setupPlayer, PlaybackService } from './src/services/trackPlayerService';
+import { setupPlayer } from './src/services/trackPlayerService';
 import { usePlayerStore } from './src/stores/usePlayerStore';
 import { colors, typography } from './src/theme';
-
-// Register the playback service
-TrackPlayer.registerPlaybackService(() => PlaybackService);
 
 export default function App() {
   const [isPlayerReady, setIsPlayerReady] = useState(false);
@@ -32,31 +28,6 @@ export default function App() {
     }
     init();
   }, []);
-
-  // Update position from Track Player periodically
-  useEffect(() => {
-    if (!isPlayerReady) return;
-
-    const interval = setInterval(async () => {
-      try {
-        const position = await TrackPlayer.getPosition();
-        const duration = await TrackPlayer.getDuration();
-        const state = await TrackPlayer.getPlaybackState();
-
-        usePlayerStore.getState().setPosition(position);
-        usePlayerStore.getState().setDuration(duration);
-
-        const isPlaying = state.state === 'playing';
-        if (usePlayerStore.getState().isPlaying !== isPlaying) {
-          usePlayerStore.getState().setIsPlaying(isPlaying);
-        }
-      } catch {
-        // Player not ready yet
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [isPlayerReady]);
 
   if (error) {
     return (

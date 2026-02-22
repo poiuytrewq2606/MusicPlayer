@@ -11,41 +11,36 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import TrackPlayer, { useProgress } from 'react-native-track-player';
 import { colors, spacing, borderRadius, typography, shadows } from '../theme';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { ProgressBar } from '../components/ProgressBar';
 import { PlayerControls } from '../components/PlayerControls';
 import { getImageUrl, getArtistNames, decodeHtml } from '../utils/formatters';
 import { LinearGradient } from 'expo-linear-gradient';
+import {
+    togglePlayPause,
+    seekTo,
+    skipToNext,
+    skipToPrevious,
+} from '../services/trackPlayerService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ARTWORK_SIZE = SCREEN_WIDTH - spacing.huge * 2;
 
 export const PlayerScreen: React.FC = () => {
     const navigation = useNavigation<any>();
-    const progress = useProgress(500);
     const rotateAnim = useRef(new Animated.Value(0)).current;
 
     const {
         currentTrack,
         isPlaying,
+        position,
+        duration,
         shuffleMode,
         repeatMode,
-        setPosition,
-        setDuration,
-        setIsPlaying,
         toggleShuffle,
         cycleRepeatMode,
-        playNext,
-        playPrevious,
     } = usePlayerStore();
-
-    // Update store position/duration from TrackPlayer progress
-    useEffect(() => {
-        setPosition(progress.position);
-        setDuration(progress.duration);
-    }, [progress.position, progress.duration]);
 
     // Vinyl rotation animation
     useEffect(() => {
@@ -80,46 +75,19 @@ export const PlayerScreen: React.FC = () => {
     const artistName = getArtistNames(currentTrack);
 
     const handlePlayPause = async () => {
-        if (isPlaying) {
-            await TrackPlayer.pause();
-            setIsPlaying(false);
-        } else {
-            await TrackPlayer.play();
-            setIsPlaying(true);
-        }
+        await togglePlayPause();
     };
 
     const handleNext = async () => {
-        const nextTrack = playNext();
-        if (nextTrack) {
-            try {
-                await TrackPlayer.skipToNext();
-                setIsPlaying(true);
-            } catch {
-                // skip failed
-            }
-        }
+        await skipToNext();
     };
 
     const handlePrevious = async () => {
-        const prevTrack = playPrevious();
-        if (prevTrack) {
-            try {
-                if (progress.position > 3) {
-                    await TrackPlayer.seekTo(0);
-                } else {
-                    await TrackPlayer.skipToPrevious();
-                }
-                setIsPlaying(true);
-            } catch {
-                await TrackPlayer.seekTo(0);
-            }
-        }
+        await skipToPrevious();
     };
 
-    const handleSeek = async (position: number) => {
-        await TrackPlayer.seekTo(position);
-        setPosition(position);
+    const handleSeek = async (pos: number) => {
+        await seekTo(pos);
     };
 
     const spin = rotateAnim.interpolate({
@@ -179,8 +147,8 @@ export const PlayerScreen: React.FC = () => {
 
                 {/* Progress Bar */}
                 <ProgressBar
-                    position={progress.position}
-                    duration={progress.duration}
+                    position={position}
+                    duration={duration}
                     onSeek={handleSeek}
                 />
 
